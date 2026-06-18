@@ -7,6 +7,13 @@ that project-aware Android CLIs share.
 that tools like [`adev`](https://github.com/cesarferreira/adev) and `dab`
 don't each reimplement ADB wrangling, APK parsing, and Gradle project discovery.
 
+## Used by
+
+- [**adev**](https://github.com/cesarferreira/adev) ([crates.io](https://crates.io/crates/adev)) — a project-aware Android developer CLI that walks into any repo and knows its `test`, `install`, `launch`, and `clean` commands.
+- [**dab**](https://github.com/cesarferreira/dab) ([crates.io](https://crates.io/crates/dab-cli)) — an Android device/ADB CLI for installing, inspecting, and managing apps and devices.
+
+Building a tool on `androkit`? Open a PR to add it here.
+
 The library **never prints, colors, or prompts**. Every function returns data
 ([`serde`]-serializable structs or plain values) or a `Result`; the calling CLI
 owns all rendering and interaction.
