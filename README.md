@@ -4,7 +4,7 @@ A reusable Android developer toolkit for Rust — the presentation-free plumbing
 that project-aware Android CLIs share.
 
 `androkit` was extracted from [`dab`](https://github.com/cesarferreira/dab) so
-that tools like [`droid`](https://github.com/cesarferreira/droid) and `dab`
+that tools like [`adev`](https://github.com/cesarferreira/adev) and `dab`
 don't each reimplement ADB wrangling, APK parsing, and Gradle project discovery.
 
 The library **never prints, colors, or prompts**. Every function returns data

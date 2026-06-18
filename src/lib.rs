@@ -3,7 +3,7 @@
 //! A reusable Android developer toolkit for Rust. It contains the
 //! presentation-free plumbing that project-aware Android CLIs share — ADB
 //! operations, APK/manifest parsing, Gradle invocation, and static Gradle
-//! project discovery — so that tools like `droid` and `dab` don't each
+//! project discovery — so that tools like `adev` and `dab` don't each
 //! reimplement it.
 //!
 //! The library never prints, colors, or prompts. Every function returns data
