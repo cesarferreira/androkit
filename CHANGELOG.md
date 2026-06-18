@@ -8,6 +8,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 <!-- next-header -->
 ## [Unreleased] - ReleaseDate
 
+## [0.3.0] - 2026-06-18
+
+### Changed
+- Add kts-simple, kts-flavors, groovy-apply-plugin, and single-module discovery fixtures
+
+### Documentation
+- Add Used by section linking adev and dab
+
 ## [0.2.0] - 2026-06-18
 
 ### Added
@@ -24,6 +32,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Initial release: `adb`, `apk`, `manifest`, `gradle`, `project`, `model`, and `exec` modules extracted from `dab`.
 
 <!-- next-url -->
-[Unreleased]: https://github.com/cesarferreira/androkit/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/cesarferreira/androkit/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/cesarferreira/androkit/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/cesarferreira/androkit/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/cesarferreira/androkit/releases/tag/v0.1.0
