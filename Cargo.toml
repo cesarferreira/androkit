@@ -1,0 +1,22 @@
+[package]
+name = "androkit"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.74"
+description = "Reusable Android developer toolkit for Rust — ADB plumbing, APK/manifest parsing, Gradle project discovery"
+license = "MIT"
+authors = ["Cesar Ferreira"]
+repository = "https://github.com/cesarferreira/androkit"
+homepage = "https://github.com/cesarferreira/androkit"
+readme = "README.md"
+keywords = ["android", "adb", "gradle", "apk", "cli"]
+categories = ["development-tools", "api-bindings"]
+
+[dependencies]
+anyhow = "1"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+which = "4.4"
+zip = "0.6"
+ctrlc = "3"
+directories = "5"
