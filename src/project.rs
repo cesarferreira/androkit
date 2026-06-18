@@ -119,15 +119,14 @@ fn resolve_default_variant(variants: &[Variant]) -> Option<String> {
 
 /// Parse module list from `settings.gradle[.kts]` (`include` directives).
 fn parse_modules(root: &Path) -> Result<Vec<Module>> {
-    let settings = ["settings.gradle", "settings.gradle.kts"]
+    let settings_text = ["settings.gradle", "settings.gradle.kts"]
         .iter()
         .map(|f| root.join(f))
-        .find(|p| p.exists());
+        .find(|p| p.exists())
+        .and_then(|p| std::fs::read_to_string(p).ok())
+        .unwrap_or_default();
 
-    let mut paths: Vec<String> = match settings {
-        Some(p) => dsl::included_modules(&std::fs::read_to_string(&p).unwrap_or_default()),
-        None => Vec::new(),
-    };
+    let mut paths: Vec<String> = dsl::included_modules(&settings_text);
 
     // Single-module projects often only have a root build.gradle; treat ":" as app.
     if paths.is_empty()
@@ -141,9 +140,16 @@ fn parse_modules(root: &Path) -> Result<Vec<Module>> {
     let catalog = read_version_catalog(root);
     let app_aliases = dsl::application_plugin_aliases(&catalog);
 
+    // Custom `project(":x").projectDir = …` relocations (e.g. generated modules).
+    let dir_overrides = dsl::project_dir_overrides(&settings_text);
+
     let mut modules = Vec::new();
     for path in paths {
-        let dir = gradle_path_to_dir(&path);
+        let dir = dir_overrides
+            .iter()
+            .find(|(p, _)| *p == path)
+            .map(|(_, d)| d.clone())
+            .unwrap_or_else(|| gradle_path_to_dir(&path));
         let build_file = ["build.gradle", "build.gradle.kts"]
             .iter()
             .map(|f| root.join(&dir).join(f))

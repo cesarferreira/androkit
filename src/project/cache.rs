@@ -17,7 +17,7 @@ use std::time::UNIX_EPOCH;
 /// Bumped whenever the discovery logic changes in a way that should invalidate
 /// previously cached results (independent of build-file mtimes). Old cache files
 /// either lack this field or carry a lower number and are ignored on load.
-const CACHE_VERSION: u32 = 2;
+const CACHE_VERSION: u32 = 3;
 
 #[derive(Serialize, Deserialize)]
 struct CacheEntry {

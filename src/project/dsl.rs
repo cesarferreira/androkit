@@ -24,6 +24,29 @@ pub fn included_modules(settings: &str) -> Vec<String> {
     modules
 }
 
+/// Custom module directory overrides declared in a settings script.
+///
+/// Returns `(gradle_path, dir)` pairs from lines like
+/// `project(":Fleet360").projectDir = file("../generated/fleet360")` (Kotlin) or
+/// `project(':lib').projectDir = new File(rootDir, 'modules/lib')` (Groovy). The
+/// directory is relative to the settings/root dir; a trailing slash is trimmed.
+pub fn project_dir_overrides(settings: &str) -> Vec<(String, String)> {
+    let stripped = strip_comments(settings);
+    let mut overrides = Vec::new();
+    for line in stripped.lines() {
+        if !line.contains(".projectDir") {
+            continue;
+        }
+        let tokens = quoted_tokens(line);
+        let path = tokens.iter().find(|t| t.starts_with(':')).cloned();
+        let dir = tokens.iter().find(|t| !t.starts_with(':')).cloned();
+        if let (Some(path), Some(dir)) = (path, dir) {
+            overrides.push((path, dir.trim_end_matches('/').to_string()));
+        }
+    }
+    overrides
+}
+
 /// True when a build script applies the Android **application** plugin.
 ///
 /// Recognizes three forms:
@@ -431,6 +454,28 @@ mod tests {
         );
         let kotlin = "include(\":app\")\ninclude(\":data\")";
         assert_eq!(included_modules(kotlin), vec![":app", ":data"]);
+    }
+
+    #[test]
+    fn parses_project_dir_overrides() {
+        let settings = r#"
+            include(":app")
+            include(":Fleet360")
+            project(":Fleet360").projectDir = file("../generated/open-api/fleet360.kotlin/")
+            include(":lib")
+            project(':lib').projectDir = new File(rootDir, 'modules/lib')
+        "#;
+        let overrides = project_dir_overrides(settings);
+        assert_eq!(
+            overrides,
+            vec![
+                (
+                    ":Fleet360".to_string(),
+                    "../generated/open-api/fleet360.kotlin".to_string()
+                ),
+                (":lib".to_string(), "modules/lib".to_string()),
+            ]
+        );
     }
 
     #[test]
