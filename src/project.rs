@@ -136,6 +136,11 @@ fn parse_modules(root: &Path) -> Result<Vec<Module>> {
         paths.push(":".to_string());
     }
 
+    // Version-catalog plugin aliases for the application plugin, so modules that
+    // apply it via `alias(libs.plugins.…)` are still detected as the app.
+    let catalog = read_version_catalog(root);
+    let app_aliases = dsl::application_plugin_aliases(&catalog);
+
     let mut modules = Vec::new();
     for path in paths {
         let dir = gradle_path_to_dir(&path);
@@ -146,7 +151,7 @@ fn parse_modules(root: &Path) -> Result<Vec<Module>> {
         let is_application = build_file
             .as_ref()
             .and_then(|p| std::fs::read_to_string(p).ok())
-            .map(|c| dsl::is_application_module(&c))
+            .map(|c| dsl::is_application_module(&c, &app_aliases))
             .unwrap_or(false);
         modules.push(Module {
             path,
@@ -155,6 +160,12 @@ fn parse_modules(root: &Path) -> Result<Vec<Module>> {
         });
     }
     Ok(modules)
+}
+
+/// Read the project's Gradle version catalog (`gradle/libs.versions.toml`),
+/// returning its text or an empty string when absent.
+fn read_version_catalog(root: &Path) -> String {
+    std::fs::read_to_string(root.join("gradle/libs.versions.toml")).unwrap_or_default()
 }
 
 /// `:feature:home` → `feature/home`; `:app` → `app`; `:` → `.`.

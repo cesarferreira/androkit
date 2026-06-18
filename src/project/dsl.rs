@@ -25,9 +25,69 @@ pub fn included_modules(settings: &str) -> Vec<String> {
 }
 
 /// True when a build script applies the Android **application** plugin.
-pub fn is_application_module(build_script: &str) -> bool {
+///
+/// Recognizes three forms:
+/// 1. the literal id — `id("com.android.application")` / `apply plugin: 'com.android.application'`;
+/// 2. a resolved version-catalog accessor — `app_aliases` holds accessor suffixes
+///    (e.g. `android.application`) discovered from `libs.versions.toml`, matched as
+///    `plugins.<suffix>`;
+/// 3. a heuristic fallback for the conventional AGP alias names, so detection still
+///    works when the catalog can't be read (`libs.plugins.android.application` /
+///    `libs.plugins.androidApplication`).
+pub fn is_application_module(build_script: &str, app_aliases: &[String]) -> bool {
     let s = strip_comments(build_script);
-    s.contains("com.android.application")
+    if s.contains("com.android.application") {
+        return true;
+    }
+    if app_aliases
+        .iter()
+        .any(|alias| s.contains(&format!("plugins.{alias}")))
+    {
+        return true;
+    }
+    s.contains("plugins.android.application") || s.contains("plugins.androidApplication")
+}
+
+/// Version-catalog accessor suffixes whose plugin id is `com.android.application`.
+///
+/// Parses the `[plugins]` table of a `libs.versions.toml` and returns each matching
+/// key as a Gradle accessor suffix (catalog `-`/`_` separators become `.`), e.g. the
+/// entry `android-application = { id = "com.android.application", ... }` yields
+/// `android.application` (referenced in build scripts as `libs.plugins.android.application`).
+pub fn application_plugin_aliases(catalog_toml: &str) -> Vec<String> {
+    let mut aliases = Vec::new();
+    let mut in_plugins = false;
+    for line in catalog_toml.lines() {
+        let t = line.trim();
+        if t.starts_with('[') {
+            in_plugins = t == "[plugins]";
+            continue;
+        }
+        if !in_plugins || t.is_empty() || t.starts_with('#') {
+            continue;
+        }
+        if let Some((key, rhs)) = t.split_once('=') {
+            if plugin_entry_id(rhs).as_deref() == Some("com.android.application") {
+                aliases.push(key.trim().replace(['-', '_'], "."));
+            }
+        }
+    }
+    aliases
+}
+
+/// Extract the plugin `id` from a catalog `[plugins]` entry RHS, handling both the
+/// inline-table form (`{ id = "x", version.ref = "y" }`) and the string form
+/// (`"x:1.2.3"` or `"x"`).
+fn plugin_entry_id(rhs: &str) -> Option<String> {
+    let rhs = rhs.trim();
+    if rhs.starts_with('{') {
+        let idx = rhs.find("id")?;
+        let after = &rhs[idx + 2..];
+        quoted_tokens(after).into_iter().next()
+    } else {
+        let raw = quoted_tokens(rhs).into_iter().next()?;
+        Some(raw.split(':').next().unwrap_or(&raw).to_string())
+    }
 }
 
 /// The `applicationId` from a build script's `defaultConfig`, if declared.
@@ -376,11 +436,52 @@ mod tests {
     #[test]
     fn detects_application_plugin() {
         assert!(is_application_module(
-            "plugins { id 'com.android.application' }"
+            "plugins { id 'com.android.application' }",
+            &[]
         ));
         assert!(!is_application_module(
-            "plugins { id 'com.android.library' }"
+            "plugins { id 'com.android.library' }",
+            &[]
         ));
+    }
+
+    #[test]
+    fn detects_application_via_version_catalog_alias() {
+        // Real-world Kotlin DSL: plugin applied through a version-catalog alias,
+        // with no literal "com.android.application" anywhere in the build script.
+        let build =
+            "plugins {\n    alias(libs.plugins.android.application)\n    alias(libs.plugins.hilt)\n}";
+        let catalog = r#"
+[versions]
+agp = "8.5.0"
+
+[plugins]
+android-application = { id = "com.android.application", version.ref = "agp" }
+android-library = { id = "com.android.library", version.ref = "agp" }
+hilt = { id = "com.google.dagger.hilt.android", version.ref = "hilt" }
+"#;
+        let aliases = application_plugin_aliases(catalog);
+        assert_eq!(aliases, vec!["android.application".to_string()]);
+        assert!(is_application_module(build, &aliases));
+        // A library module aliasing android.library must NOT be detected as app.
+        let lib = "plugins {\n    alias(libs.plugins.android.library)\n}";
+        assert!(!is_application_module(lib, &aliases));
+    }
+
+    #[test]
+    fn detects_application_alias_without_catalog() {
+        // Fallback heuristic when libs.versions.toml is unavailable.
+        let build = "plugins {\n    alias(libs.plugins.android.application)\n}";
+        assert!(is_application_module(build, &[]));
+    }
+
+    #[test]
+    fn plugin_alias_string_form() {
+        let catalog = "[plugins]\nandroid-application = \"com.android.application:8.5.0\"\n";
+        assert_eq!(
+            application_plugin_aliases(catalog),
+            vec!["android.application".to_string()]
+        );
     }
 
     #[test]

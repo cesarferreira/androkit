@@ -14,8 +14,14 @@ use std::hash::{Hash, Hasher};
 use std::path::{Path, PathBuf};
 use std::time::UNIX_EPOCH;
 
+/// Bumped whenever the discovery logic changes in a way that should invalidate
+/// previously cached results (independent of build-file mtimes). Old cache files
+/// either lack this field or carry a lower number and are ignored on load.
+const CACHE_VERSION: u32 = 2;
+
 #[derive(Serialize, Deserialize)]
 struct CacheEntry {
+    version: u32,
     /// (file path, mtime seconds) for every file the project depends on.
     signature: Vec<(String, u64)>,
     project: AndroidProject,
@@ -26,7 +32,7 @@ pub fn load(root: &Path) -> Option<AndroidProject> {
     let path = cache_file(root)?;
     let raw = std::fs::read_to_string(&path).ok()?;
     let entry: CacheEntry = serde_json::from_str(&raw).ok()?;
-    if entry.signature == signature(root, &entry.project) {
+    if entry.version == CACHE_VERSION && entry.signature == signature(root, &entry.project) {
         Some(entry.project)
     } else {
         None
@@ -42,6 +48,7 @@ pub fn store(root: &Path, project: &AndroidProject) {
         let _ = std::fs::create_dir_all(parent);
     }
     let entry = CacheEntry {
+        version: CACHE_VERSION,
         signature: signature(root, project),
         project: project.clone(),
     };
