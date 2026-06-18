@@ -1,0 +1,12 @@
+apply plugin: 'com.android.application'
+
+android {
+    namespace 'com.example.single'
+    compileSdk 34
+
+    defaultConfig {
+        applicationId "com.example.single"
+        minSdk 21
+        targetSdk 34
+    }
+}

@@ -60,3 +60,80 @@ fn find_root_walks_up_from_nested_dir() {
     let root = project::find_root(&nested).expect("should find root");
     assert_eq!(root, fixture("multi-variant"));
 }
+
+#[test]
+fn discovers_kts_simple_project() {
+    let root = fixture("kts-simple");
+    let project = project::discover_uncached(&root).expect("discovery should succeed");
+
+    assert_eq!(project.app_module.as_deref(), Some(":app"));
+    assert_eq!(
+        project.application_id.as_deref(),
+        Some("com.example.simple")
+    );
+
+    // Only `release` is declared; `debug` is implicit.
+    let names: Vec<&str> = project.variants.iter().map(|v| v.name.as_str()).collect();
+    assert_eq!(names, vec!["debug", "release"]);
+    assert_eq!(project.default_variant.as_deref(), Some("debug"));
+
+    assert_eq!(
+        project.launch_activity.as_deref(),
+        Some("com.example.simple/com.example.simple.MainActivity")
+    );
+}
+
+#[test]
+fn discovers_kts_flavors_project() {
+    let root = fixture("kts-flavors");
+    let project = project::discover_uncached(&root).expect("discovery should succeed");
+
+    assert_eq!(project.app_module.as_deref(), Some(":app"));
+
+    let names: Vec<&str> = project.variants.iter().map(|v| v.name.as_str()).collect();
+    assert_eq!(names.len(), 4);
+    for expected in ["devDebug", "devRelease", "prodDebug", "prodRelease"] {
+        assert!(names.contains(&expected), "missing variant {expected}");
+    }
+    assert_eq!(project.default_variant.as_deref(), Some("devDebug"));
+}
+
+#[test]
+fn discovers_groovy_apply_plugin_project() {
+    let root = fixture("groovy-apply-plugin");
+    let project = project::discover_uncached(&root).expect("discovery should succeed");
+
+    assert_eq!(project.app_module.as_deref(), Some(":app"));
+    let app = project.modules.iter().find(|m| m.path == ":app").unwrap();
+    assert!(app.is_application);
+    assert_eq!(
+        project.application_id.as_deref(),
+        Some("com.example.legacy")
+    );
+
+    let names: Vec<&str> = project.variants.iter().map(|v| v.name.as_str()).collect();
+    assert_eq!(names, vec!["debug", "release"]);
+}
+
+#[test]
+fn discovers_single_module_project() {
+    let root = fixture("single-module");
+    let project = project::discover_uncached(&root).expect("discovery should succeed");
+
+    // The root build script is the application module, addressed as ":".
+    assert_eq!(project.app_module.as_deref(), Some(":"));
+    let root_module = project.modules.iter().find(|m| m.path == ":").unwrap();
+    assert!(root_module.is_application);
+    assert_eq!(
+        project.application_id.as_deref(),
+        Some("com.example.single")
+    );
+
+    let names: Vec<&str> = project.variants.iter().map(|v| v.name.as_str()).collect();
+    assert_eq!(names, vec!["debug", "release"]);
+
+    assert_eq!(
+        project.launch_activity.as_deref(),
+        Some("com.example.single/com.example.single.MainActivity")
+    );
+}
